@@ -1,0 +1,11 @@
+binary/
+build/
+.pio/
+.vscode/c_cpp_properties.json
+*.elf
+*.map
+*.bin
+*.hex
+*.exe
+*.o
+*.d
