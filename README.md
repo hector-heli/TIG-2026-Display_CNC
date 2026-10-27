@@ -8,7 +8,7 @@ TFT_eSPI.
 
 - Teclado de 15 teclas: `New`, `Del`, `Send`, `0-9`, `.` y `#`.
 - Visor del n煤mero introducido (m谩ximo 12 caracteres).
-- `Send` env铆a el n煤mero por el puerto serie a 115200 baudios.
+- Comunicaci髇 con DLC32 por WiFi TCP (por defecto 192.168.4.1:23) o UART como fallback.
 - Calibraci贸n t谩ctil almacenada en SPIFFS (`/TouchCalData2`) y ligada a la
   rotaci贸n de la pantalla.
 - Dise帽o en horizontal 480x320 (`DISPLAY_ROTATION 1`), con el teclado a la
@@ -75,9 +75,7 @@ resoluci贸n `320x480` y el orden de color `TFT_BGR`.
 La configuraci贸n de VS Code (`arduino.json`) genera los binarios en `binary/`,
 que est谩 excluido del control de versiones.
 
-## Uso
-
-- Al primer arranque, o si cambia la rotaci贸n, aparece la pantalla de
+## Configuraci髇 WiFi/TCP\r\n\r\n1. En la pantalla de Ajustes del pendant, usar 'Modo: UART/WiFi' para cambiar entre modos (requiere reinicio tras guardar).\r\n2. Usar 'WiFi/DLC32' para alternar IP destino (192.168.4.1 / 192.168.1.100 / 192.168.1.50) y puerto (23/8080).\r\n3. Las credenciales WiFi se guardan en Preferences (namespace pendant, claves wifissid/wifipass). Por defecto DLC32 en AP suele usar IP 192.168.4.1 puerto 23.\r\n4. En modo WiFi se reintenta conexi髇 autom醫icamente. El diagn髎tico muestra estado WiFi/TCP/IP.\r\n\r\n## Uso\r\n\r\n- Al primer arranque, o si cambia la rotaci贸n, aparece la pantalla de
   calibraci贸n: toca las esquinas en el orden indicado.
 - Para forzar una nueva calibraci贸n, pon `REPEAT_CAL true` en `Archivo.ino`,
   recompila, calibra y vuelve a ponerlo en `false`.

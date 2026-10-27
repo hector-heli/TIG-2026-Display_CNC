@@ -238,11 +238,22 @@ void uiDrawSettingsDiagnostics() {
   tft.setTextFont(1);
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
 
-  char buf[80];
+  char buf[100];
   unsigned long age = state.lastStatusMs ? (millis() - state.lastStatusMs) : 0;
-  snprintf(buf, sizeof(buf), "Enlace: %s   Ultimo estado: %lu ms   Cola: %s",
-           state.linkOk ? "OK" : "SIN LINK", age, cmd.busy ? "ocupada" : "libre");
+  if (state.linkMode == LINK_UART) {
+    snprintf(buf, sizeof(buf), "Modo: UART   Enlace: %s   Ultimo estado: %lu ms   Cola: %s",
+             state.linkOk ? "OK" : "SIN LINK", age, cmd.busy ? "ocupada" : "libre");
+  } else {
+    snprintf(buf, sizeof(buf), "Modo: WiFi   WiFi:%s TCP:%s   Ultimo estado: %lu ms",
+             state.wifiConnected ? "OK" : "NO", state.tcpConnected ? "OK" : "NO", age);
+  }
   tft.drawString(buf, 12, 202);
+
+  if (state.linkMode == LINK_WIFI) {
+    snprintf(buf, sizeof(buf), "DLC32: %s:%d   IP CYD: %s",
+             state.dlcIp, state.dlcPort, WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "-");
+    tft.drawString(buf, 12, 214);
+  }
 
   if (state.lastError[0] != 0) {
     snprintf(buf, sizeof(buf), "Ultimo error: %s", state.lastError);
@@ -251,12 +262,14 @@ void uiDrawSettingsDiagnostics() {
     snprintf(buf, sizeof(buf), "Sin errores registrados");
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
   }
-  tft.drawString(buf, 12, 220);
+  int errY = state.linkMode == LINK_WIFI ? 226 : 220;
+  tft.drawString(buf, 12, errY);
 
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  snprintf(buf, sizeof(buf), "Estado: %s   Feed ov: %d%%   Spindle ov: %d%%",
-           state.grblState, state.feedOv, state.spindleOv);
-  tft.drawString(buf, 12, 238);
+  snprintf(buf, sizeof(buf), "Estado: %s   Feed ov: %d%%   Spindle ov: %d%%   Cola: %s",
+           state.grblState, state.feedOv, state.spindleOv, cmd.busy ? "ocupada" : "libre");
+  int stY = state.linkMode == LINK_WIFI ? 238 : 238;
+  tft.drawString(buf, 12, stY);
 
   tft.setTextFont(2);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
@@ -279,7 +292,7 @@ void uiDrawSettings() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString("Avance jog (mm/min)", 10, 54);
 
-  char buf[24];
+  char buf[40];
   snprintf(buf, sizeof(buf), "%.0f", state.jogFeed);
   tft.setTextDatum(MC_DATUM);
   tft.setTextFont(4);
@@ -304,7 +317,9 @@ void uiDrawSettings() {
   uiDrawButton(228, 110, 70, 30, "+100", TFT_DARKGREY);
   uiDrawButton(306, 110, 70, 30, "1000", TFT_DARKGREY);
 
-  uiDrawButton(10, 150, 180, 30, "Recalibrar tactil", TFT_MAROON);
+  uiDrawButton(10, 146, 150, 28, state.linkMode == LINK_WIFI ? "Modo: WiFi" : "Modo: UART", TFT_NAVY);
+  uiDrawButton(170, 146, 150, 28, "WiFi/DLC32", TFT_NAVY);
+  uiDrawButton(330, 146, 140, 28, "Recalibrar tactil", TFT_MAROON);
 
   uiDrawSettingsDiagnostics();
   uiDrawNav();
@@ -583,13 +598,46 @@ static void handleSettingsTouch(int16_t x, int16_t y) {
     return;
   }
 
-  if (x >= 10 && x < 190 && y >= 150 && y < 180) {
-    if (uiConfirm(CONFIRM_TOUCH_CAL, "Toca Recalibrar otra vez para confirmar")) {
-      touchCalibrate(true);
-      uiBegin();
-      grblSetMessage("Calibracion completada");
+  if (y >= 146 && y < 174) {
+    if (x >= 10 && x < 160) {
+      if (state.linkMode == LINK_UART) {
+        state.linkMode = LINK_WIFI;
+        grblSetMessage("Modo: WiFi (reiniciar para aplicar)");
+      } else {
+        state.linkMode = LINK_UART;
+        grblSetMessage("Modo: UART (reiniciar para aplicar)");
+      }
+      settingsSaveLink();
+      state.pageDirty = true;
+      return;
     }
-    return;
+    if (x >= 170 && x < 320) {
+      if (strcmp(state.dlcIp, "192.168.4.1") == 0) {
+        strncpy(state.dlcIp, "192.168.1.100", sizeof(state.dlcIp) - 1);
+      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0) {
+        strncpy(state.dlcIp, "192.168.1.50", sizeof(state.dlcIp) - 1);
+      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0) {
+        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+      } else {
+        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+      }
+      state.dlcIp[sizeof(state.dlcIp) - 1] = 0;
+      if (state.dlcPort == 23) state.dlcPort = 8080;
+      else if (state.dlcPort == 8080) state.dlcPort = 23;
+      else state.dlcPort = 23;
+      settingsSaveLink();
+      state.pageDirty = true;
+      grblSetMessage("IP/Puerto DLC32 actualizados");
+      return;
+    }
+    if (x >= 330 && x < 470) {
+      if (uiConfirm(CONFIRM_TOUCH_CAL, "Toca Recalibrar otra vez para confirmar")) {
+        touchCalibrate(true);
+        uiBegin();
+        grblSetMessage("Calibracion completada");
+      }
+      return;
+    }
   }
 }
 

@@ -3,7 +3,35 @@
 #include <Arduino.h>
 
 // ---------------------------------------------------------------------------
-// CYD <-> ESP32-S3 link
+// Link mode
+// ---------------------------------------------------------------------------
+
+enum LinkMode : uint8_t {
+  LINK_UART = 0,
+  LINK_WIFI = 1
+};
+
+#define LINK_MODE_DEFAULT LINK_UART
+
+#define WIFI_RECONNECT_MS 5000
+#define WIFI_CONNECT_TIMEOUT_MS 15000
+
+// ---------------------------------------------------------------------------
+// WiFi defaults
+// ---------------------------------------------------------------------------
+
+#define WIFI_DEFAULT_SSID ""
+#define WIFI_DEFAULT_PASS ""
+
+// ---------------------------------------------------------------------------
+// DLC32 TCP defaults (DLC32 en AP mode suele usar 192.168.4.1)
+// ---------------------------------------------------------------------------
+
+#define DLC32_DEFAULT_IP "192.168.4.1"
+#define DLC32_DEFAULT_PORT 23
+
+// ---------------------------------------------------------------------------
+// CYD <-> Controller link (UART fallback)
 // ---------------------------------------------------------------------------
 
 #define CYD_RX_PIN 22
@@ -108,6 +136,16 @@ struct PendantState {
 
   ConfirmAction confirm;
   unsigned long confirmMs;
+
+  // Link configuration
+  LinkMode linkMode;
+  char wifiSsid[33];
+  char wifiPass[33];
+  char dlcIp[16];
+  uint16_t dlcPort;
+  bool wifiConnected;
+  bool tcpConnected;
+  unsigned long lastWifiReconnectMs;
 };
 
 struct CommandState {

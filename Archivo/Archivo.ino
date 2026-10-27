@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <Preferences.h>
+#include <WiFi.h>
 
 #include "Config.h"
 
@@ -14,6 +15,7 @@ Preferences prefs;
 
 void settingsLoad();
 void settingsSave();
+void settingsSaveLink();
 void touchCalibrate(bool force);
 void linkBegin();
 void linkPoll();
