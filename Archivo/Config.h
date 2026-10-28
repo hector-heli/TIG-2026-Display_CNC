@@ -20,15 +20,15 @@ enum LinkMode : uint8_t {
 // WiFi defaults
 // ---------------------------------------------------------------------------
 
-#define WIFI_DEFAULT_SSID ""
-#define WIFI_DEFAULT_PASS ""
+#define WIFI_DEFAULT_SSID "MKS_DLC"
+#define WIFI_DEFAULT_PASS "12345678"
 
 // ---------------------------------------------------------------------------
 // DLC32 TCP defaults (DLC32 en AP mode suele usar 192.168.4.1)
 // ---------------------------------------------------------------------------
 
 #define DLC32_DEFAULT_IP "192.168.4.1"
-#define DLC32_DEFAULT_PORT 23
+#define DLC32_DEFAULT_PORT 80
 
 // ---------------------------------------------------------------------------
 // CYD <-> Controller link (UART fallback)

@@ -8,7 +8,7 @@ TFT_eSPI.
 
 - Teclado de 15 teclas: `New`, `Del`, `Send`, `0-9`, `.` y `#`.
 - Visor del n煤mero introducido (m谩ximo 12 caracteres).
-- Comunicaci髇 con DLC32 por WiFi TCP (por defecto 192.168.4.1:23) o UART como fallback.
+- Comunicaci锟絥 con DLC32 por WiFi TCP (por defecto 192.168.4.1:23) o UART como fallback.
 - Calibraci贸n t谩ctil almacenada en SPIFFS (`/TouchCalData2`) y ligada a la
   rotaci贸n de la pantalla.
 - Dise帽o en horizontal 480x320 (`DISPLAY_ROTATION 1`), con el teclado a la
@@ -45,20 +45,12 @@ controlador sea ST7796; para variantes ILI9488 cambia el driver en
 
 ## Configuraci贸n de TFT_eSPI
 
-La configuraci贸n de pines y driver no vive en este repositorio dentro de la
-librer铆a, por lo que hay que instalarla una vez:
-
-1. Haz una copia de seguridad de `Documents/Arduino/libraries/TFT_eSPI/User_Setup.h`.
-2. Copia `config/User_Setup.h` sobre ese archivo.
-3. Verifica que `TFT_eSPI/User_Setup_Select.h` tenga activa la l铆nea:
-
-   ```cpp
-   #include <User_Setup.h>
-   ```
-
-El archivo `config/User_Setup.h` es la fuente de verdad para el cableado y debe
-actualizarse aqu铆 si cambia el hardware. Incluye el driver `ST7796_DRIVER`, la
-resoluci贸n `320x480` y el orden de color `TFT_BGR`.
+Instala TFT_eSPI en `Documents/Arduino/libraries/TFT_eSPI`. El archivo
+`Archivo/tft_setup.h` carga autom谩ticamente `config/User_Setup.h` durante la
+compilaci贸n, sin modificar los archivos de la librer铆a. Este archivo del
+repositorio es la fuente de verdad para el cableado y el driver: incluye
+`ST7796_DRIVER`, la resoluci贸n `320x480`, el orden de color `TFT_BGR` y la
+configuraci贸n del controlador t谩ctil.
 
 ## Compilar y subir
 
@@ -75,7 +67,7 @@ resoluci贸n `320x480` y el orden de color `TFT_BGR`.
 La configuraci贸n de VS Code (`arduino.json`) genera los binarios en `binary/`,
 que est谩 excluido del control de versiones.
 
-## Configuraci髇 WiFi/TCP\r\n\r\n1. En la pantalla de Ajustes del pendant, usar 'Modo: UART/WiFi' para cambiar entre modos (requiere reinicio tras guardar).\r\n2. Usar 'WiFi/DLC32' para alternar IP destino (192.168.4.1 / 192.168.1.100 / 192.168.1.50) y puerto (23/8080).\r\n3. Las credenciales WiFi se guardan en Preferences (namespace pendant, claves wifissid/wifipass). Por defecto DLC32 en AP suele usar IP 192.168.4.1 puerto 23.\r\n4. En modo WiFi se reintenta conexi髇 autom醫icamente. El diagn髎tico muestra estado WiFi/TCP/IP.\r\n\r\n## Uso\r\n\r\n- Al primer arranque, o si cambia la rotaci贸n, aparece la pantalla de
+## Configuraci锟絥 WiFi/TCP\r\n\r\n1. En la pantalla de Ajustes del pendant, usar 'Modo: UART/WiFi' para cambiar entre modos (requiere reinicio tras guardar).\r\n2. Usar 'WiFi/DLC32' para alternar IP destino (192.168.4.1 / 192.168.1.100 / 192.168.1.50) y puerto (23/8080).\r\n3. Las credenciales WiFi se guardan en Preferences (namespace pendant, claves wifissid/wifipass). Por defecto DLC32 en AP suele usar IP 192.168.4.1 puerto 23.\r\n4. En modo WiFi se reintenta conexi锟絥 autom锟絫icamente. El diagn锟絪tico muestra estado WiFi/TCP/IP.\r\n\r\n## Uso\r\n\r\n- Al primer arranque, o si cambia la rotaci贸n, aparece la pantalla de
   calibraci贸n: toca las esquinas en el orden indicado.
 - Para forzar una nueva calibraci贸n, pon `REPEAT_CAL true` en `Archivo.ino`,
   recompila, calibra y vuelve a ponerlo en `false`.
@@ -88,6 +80,7 @@ que est谩 excluido del control de versiones.
 ```
 Archivo/
   Archivo.ino        Sketch principal
+  tft_setup.h        Conecta la configuraci贸n TFT_eSPI del repositorio
   Free_Fonts.h       Cabecera auxiliar de fuentes (no usada por el sketch)
 config/
   User_Setup.h       Configuraci贸n de TFT_eSPI para este hardware

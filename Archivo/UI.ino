@@ -612,19 +612,32 @@ static void handleSettingsTouch(int16_t x, int16_t y) {
       return;
     }
     if (x >= 170 && x < 320) {
-      if (strcmp(state.dlcIp, "192.168.4.1") == 0) {
+      if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 80) {
         strncpy(state.dlcIp, "192.168.1.100", sizeof(state.dlcIp) - 1);
-      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0) {
+        state.dlcPort = 80;
+      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0 && state.dlcPort == 80) {
         strncpy(state.dlcIp, "192.168.1.50", sizeof(state.dlcIp) - 1);
-      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0) {
+        state.dlcPort = 80;
+      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0 && state.dlcPort == 80) {
         strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 8080;
+      } else if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 8080) {
+        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 23;
+      } else if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 23) {
+        strncpy(state.dlcIp, "192.168.1.100", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 23;
+      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0 && state.dlcPort == 23) {
+        strncpy(state.dlcIp, "192.168.1.50", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 23;
+      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0 && state.dlcPort == 23) {
+        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 80;
       } else {
         strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
+        state.dlcPort = 80;
       }
       state.dlcIp[sizeof(state.dlcIp) - 1] = 0;
-      if (state.dlcPort == 23) state.dlcPort = 8080;
-      else if (state.dlcPort == 8080) state.dlcPort = 23;
-      else state.dlcPort = 23;
       settingsSaveLink();
       state.pageDirty = true;
       grblSetMessage("IP/Puerto DLC32 actualizados");
