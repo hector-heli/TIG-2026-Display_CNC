@@ -612,32 +612,29 @@ static void handleSettingsTouch(int16_t x, int16_t y) {
       return;
     }
     if (x >= 170 && x < 320) {
-      if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 80) {
-        strncpy(state.dlcIp, "192.168.1.100", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 80;
-      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0 && state.dlcPort == 80) {
-        strncpy(state.dlcIp, "192.168.1.50", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 80;
-      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0 && state.dlcPort == 80) {
-        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 8080;
-      } else if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 8080) {
-        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 23;
-      } else if (strcmp(state.dlcIp, "192.168.4.1") == 0 && state.dlcPort == 23) {
-        strncpy(state.dlcIp, "192.168.1.100", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 23;
-      } else if (strcmp(state.dlcIp, "192.168.1.100") == 0 && state.dlcPort == 23) {
-        strncpy(state.dlcIp, "192.168.1.50", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 23;
-      } else if (strcmp(state.dlcIp, "192.168.1.50") == 0 && state.dlcPort == 23) {
-        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 80;
-      } else {
-        strncpy(state.dlcIp, "192.168.4.1", sizeof(state.dlcIp) - 1);
-        state.dlcPort = 80;
+      struct LinkPreset { const char *ip; uint16_t port; };
+      static const LinkPreset presets[] = {
+        {DLC32_DEFAULT_IP, DLC32_DEFAULT_PORT},
+        {DLC32_DEFAULT_IP, DLC32_ALT_PORT},
+        {"192.168.1.100", DLC32_DEFAULT_PORT},
+        {"192.168.1.100", DLC32_ALT_PORT},
+        {"192.168.1.50", DLC32_DEFAULT_PORT},
+        {"192.168.1.50", DLC32_ALT_PORT},
+      };
+      const size_t count = sizeof(presets) / sizeof(presets[0]);
+      size_t next = 0;
+
+      for (size_t i = 0; i < count; i++) {
+        if (strcmp(state.dlcIp, presets[i].ip) == 0 &&
+            state.dlcPort == presets[i].port) {
+          next = (i + 1) % count;
+          break;
+        }
       }
+
+      strncpy(state.dlcIp, presets[next].ip, sizeof(state.dlcIp) - 1);
       state.dlcIp[sizeof(state.dlcIp) - 1] = 0;
+      state.dlcPort = presets[next].port;
       settingsSaveLink();
       state.pageDirty = true;
       grblSetMessage("IP/Puerto DLC32 actualizados");

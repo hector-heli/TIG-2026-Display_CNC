@@ -4,6 +4,10 @@ static char linkLine[192];
 static uint16_t linkLineLen = 0;
 static WiFiClient tcpClient;
 static unsigned long lastWifiAttemptMs = 0;
+static unsigned long lastTcpAttemptMs = 0;
+static unsigned long lastLinkLogMs = 0;
+static bool wifiAttemptActive = false;
+static bool tcpUseFallbackPort = false;
 
 void linkBegin() {
   linkLineLen = 0;
@@ -13,7 +17,11 @@ void linkBegin() {
   state.wifiConnected = false;
   state.tcpConnected = false;
   state.lastWifiReconnectMs = millis();
-  lastWifiAttemptMs = 0;
+  lastWifiAttemptMs = millis() - WIFI_RECONNECT_MS;
+  lastTcpAttemptMs = millis() - WIFI_RECONNECT_MS;
+  lastLinkLogMs = 0;
+  wifiAttemptActive = false;
+  tcpUseFallbackPort = false;
 
   if (tcpClient.connected()) {
     tcpClient.stop();
@@ -24,9 +32,11 @@ void linkBegin() {
     LinkSerial.setTimeout(20);
   } else {
     WiFi.mode(WIFI_STA);
-    WiFi.disconnect(true);
+    WiFi.disconnect(false);
+    WiFi.setSleep(false);
     delay(100);
-    lastWifiAttemptMs = millis() - WIFI_RECONNECT_MS;
+    Serial.printf("WiFi target ssid='%s' -> %s:%u\n",
+                  state.wifiSsid, state.dlcIp, (unsigned)state.dlcPort);
   }
 }
 
@@ -58,11 +68,13 @@ void linkPoll() {
       }
     }
   } else {
-    // WiFi mode
+    unsigned long now = millis();
+
     if (WiFi.status() != WL_CONNECTED) {
       if (state.wifiConnected) {
         state.wifiConnected = false;
         state.statusDirty = true;
+        Serial.println("WiFi disconnected");
       }
       if (tcpClient.connected()) {
         tcpClient.stop();
@@ -71,26 +83,67 @@ void linkPoll() {
         state.tcpConnected = false;
         state.statusDirty = true;
       }
-      if (millis() - lastWifiAttemptMs >= WIFI_RECONNECT_MS) {
-        lastWifiAttemptMs = millis();
-        if (state.wifiSsid[0] != 0) {
-          WiFi.begin(state.wifiSsid, state.wifiPass);
+
+      if (!wifiAttemptActive) {
+        if (now - lastWifiAttemptMs >= WIFI_RECONNECT_MS) {
+          lastWifiAttemptMs = now;
+          if (state.wifiSsid[0] != 0) {
+            WiFi.begin(state.wifiSsid, state.wifiPass);
+            wifiAttemptActive = true;
+            Serial.printf("WiFi begin ssid='%s' passLen=%u\n",
+                          state.wifiSsid, (unsigned)strlen(state.wifiPass));
+          } else {
+            Serial.println("WiFi begin skipped: empty SSID");
+          }
         }
+      } else if (now - lastWifiAttemptMs >= WIFI_CONNECT_TIMEOUT_MS) {
+        wifiAttemptActive = false;
+        lastWifiAttemptMs = now;
+        Serial.printf("WiFi timeout status=%d\n", (int)WiFi.status());
+        WiFi.disconnect(false);
       }
     } else {
+      wifiAttemptActive = false;
       if (!state.wifiConnected) {
         state.wifiConnected = true;
         state.statusDirty = true;
+        Serial.printf("WiFi connected ip=%s rssi=%d\n",
+                      WiFi.localIP().toString().c_str(), WiFi.RSSI());
       }
+
       if (!tcpClient.connected()) {
         if (state.tcpConnected) {
           state.tcpConnected = false;
           state.statusDirty = true;
         }
-        if (millis() - lastWifiAttemptMs >= WIFI_RECONNECT_MS) {
-          lastWifiAttemptMs = millis();
+        if (now - lastTcpAttemptMs >= WIFI_RECONNECT_MS) {
+          lastTcpAttemptMs = now;
           if (state.dlcIp[0] != 0 && state.dlcPort > 0) {
-            tcpClient.connect(state.dlcIp, state.dlcPort);
+            uint16_t portToTry = state.dlcPort;
+            if (tcpUseFallbackPort) {
+              portToTry = (state.dlcPort == DLC32_DEFAULT_PORT) ? DLC32_ALT_PORT
+                                                                : DLC32_DEFAULT_PORT;
+            }
+
+            bool connected = tcpClient.connect(state.dlcIp, portToTry, 3000);
+            Serial.printf("TCP connect %s:%u -> %s%s\n",
+                          state.dlcIp, (unsigned)portToTry,
+                          connected ? "OK" : "FAIL",
+                          tcpUseFallbackPort ? " (fallback)" : "");
+
+            if (connected) {
+              tcpUseFallbackPort = false;
+              if (portToTry != state.dlcPort) {
+                state.dlcPort = portToTry;
+                settingsSaveLink();
+                Serial.printf("TCP port saved: %u\n", (unsigned)state.dlcPort);
+              }
+              state.tcpConnected = true;
+              state.statusDirty = true;
+              linkLineLen = 0;
+            } else {
+              tcpUseFallbackPort = !tcpUseFallbackPort;
+            }
           }
         }
       } else {
@@ -121,6 +174,13 @@ void linkPoll() {
           }
         }
       }
+    }
+
+    if (millis() - lastLinkLogMs >= 1000) {
+      lastLinkLogMs = millis();
+      Serial.printf("Link status wifi=%d tcp=%u link=%u\n",
+                    (int)WiFi.status(), (unsigned)state.tcpConnected,
+                    (unsigned)state.linkOk);
     }
   }
 

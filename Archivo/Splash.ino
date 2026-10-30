@@ -2,7 +2,7 @@
 #include "LogoUAN.h"
 
 #define SPLASH_MS 5000
-#define UAN_BLUE 0x0C3F  // aproximado #18317E
+#define UAN_BLUE 0x01B8  // aproximado rgb(6, 53, 196)
 
 static unsigned long splashUntil = 0;
 static bool splashActive = false;

@@ -51,6 +51,8 @@ void setup() {
   grblBegin();
   
   splashShow();
+  linkPoll();
+
 }
 
 void loop() {

@@ -11,7 +11,7 @@ enum LinkMode : uint8_t {
   LINK_WIFI = 1
 };
 
-#define LINK_MODE_DEFAULT LINK_UART
+#define LINK_MODE_DEFAULT LINK_WIFI
 
 #define WIFI_RECONNECT_MS 5000
 #define WIFI_CONNECT_TIMEOUT_MS 15000
@@ -25,10 +25,15 @@ enum LinkMode : uint8_t {
 
 // ---------------------------------------------------------------------------
 // DLC32 TCP defaults (DLC32 en AP mode suele usar 192.168.4.1)
+// El puerto 23 es el Telnet/GRBL del DLC32; 8080 se mantiene como
+// alternativa para otras variantes de firmware. El puerto 80 es la
+// interfaz web HTTP y no entrega el flujo GRBL.
 // ---------------------------------------------------------------------------
 
 #define DLC32_DEFAULT_IP "192.168.4.1"
-#define DLC32_DEFAULT_PORT 80
+#define DLC32_DEFAULT_PORT 23
+#define DLC32_ALT_PORT 8080
+#define DLC32_HTTP_PORT 80
 
 // ---------------------------------------------------------------------------
 // CYD <-> Controller link (UART fallback)

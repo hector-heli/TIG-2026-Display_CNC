@@ -67,7 +67,16 @@ configuración del controlador táctil.
 La configuración de VS Code (`arduino.json`) genera los binarios en `binary/`,
 que está excluido del control de versiones.
 
-## Configuraci�n WiFi/TCP\r\n\r\n1. En la pantalla de Ajustes del pendant, usar 'Modo: UART/WiFi' para cambiar entre modos (requiere reinicio tras guardar).\r\n2. Usar 'WiFi/DLC32' para alternar IP destino (192.168.4.1 / 192.168.1.100 / 192.168.1.50) y puerto (23/8080).\r\n3. Las credenciales WiFi se guardan en Preferences (namespace pendant, claves wifissid/wifipass). Por defecto DLC32 en AP suele usar IP 192.168.4.1 puerto 23.\r\n4. En modo WiFi se reintenta conexi�n autom�ticamente. El diagn�stico muestra estado WiFi/TCP/IP.\r\n\r\n## Uso\r\n\r\n- Al primer arranque, o si cambia la rotación, aparece la pantalla de
+## Configuraci�n WiFi/TCP
+
+1. En la pantalla de Ajustes del pendant, usar 'Modo: UART/WiFi' para cambiar entre modos (requiere reinicio tras guardar).
+2. Usar 'WiFi/DLC32' para alternar IP destino (192.168.4.1 / 192.168.1.100 / 192.168.1.50) y puerto (23/8080).
+3. Las credenciales WiFi se guardan en Preferences (namespace pendant, claves wifissid/wifipass). Por defecto DLC32 en AP suele usar IP 192.168.4.1 puerto 23 (8080 como alternativa).
+4. En modo WiFi se reintenta conexi�n autom�ticamente. El diagn�stico muestra estado WiFi/TCP/IP.
+
+## Uso
+
+- Al primer arranque, o si cambia la rotación, aparece la pantalla de
   calibración: toca las esquinas en el orden indicado.
 - Para forzar una nueva calibración, pon `REPEAT_CAL true` en `Archivo.ino`,
   recompila, calibra y vuelve a ponerlo en `false`.
