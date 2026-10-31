@@ -46,6 +46,7 @@ void grblSetError(const char *msg) {
   state.lastError[sizeof(state.lastError) - 1] = 0;
   state.lastErrorMs = millis();
   grblSetMessage(msg);
+  jobOnGrblError(msg);
 }
 
 void grblBegin() {
@@ -60,23 +61,36 @@ void grblProcess() {
     linkSendRealtime('?');
   }
 
-  if (cmd.busy && now - cmd.sentMs > CMD_TIMEOUT_MS) {
+  bool jobActive = (state.jobState == JOB_RUNNING ||
+                    state.jobState == JOB_PAUSED);
+  bool moving = jobActive && state.linkOk &&
+                (strncmp(state.grblState, "Run", 3) == 0 ||
+                 strncmp(state.grblState, "Jog", 3) == 0 ||
+                 strncmp(state.grblState, "Home", 4) == 0);
+  unsigned long timeoutMs = jobActive
+                            ? (moving ? 0UL : JOB_ACK_TIMEOUT_MS)
+                            : CMD_TIMEOUT_MS;
+
+  if (cmd.busy && timeoutMs > 0 && now - cmd.sentMs > timeoutMs) {
+    Serial.printf("GRBL timeout cmd='%s' state=%s elapsed=%lu\n",
+                  cmd.text, state.grblState, now - cmd.sentMs);
     cmd.busy = false;
+    cmd.spindlePending = false;
     grblSetError("Timeout de comando");
   }
 }
 
-void grblSendCommand(const char *text, bool motion = false) {
-  if (text == nullptr || *text == 0) return;
+bool grblSendCommand(const char *text, bool motion) {
+  if (text == nullptr || *text == 0) return false;
 
   if (cmd.busy) {
     grblSetMessage("Ocupado, espera ok/error");
-    return;
+    return false;
   }
 
   if (!state.linkOk) {
     grblSetError("Sin enlace con DLC32");
-    return;
+    return false;
   }
 
   strncpy(cmd.text, text, sizeof(cmd.text) - 1);
@@ -87,6 +101,7 @@ void grblSendCommand(const char *text, bool motion = false) {
 
   linkSendLine(cmd.text);
   state.statusDirty = true;
+  return true;
 }
 
 void grblParseStatus(const char *line) {
@@ -150,17 +165,32 @@ void grblParseLine(const char *line) {
 
   if (strcmp(line, "ok") == 0) {
     cmd.busy = false;
+    if (cmd.spindlePending) {
+      state.spindleDir = cmd.pendingSpindleDir;
+      cmd.spindlePending = false;
+      state.pageDirty = true;
+      if (state.spindleDir == SPINDLE_CCW) {
+        grblSetMessage("M4 CCW activo");
+      } else if (state.spindleDir == SPINDLE_CW) {
+        grblSetMessage("M3 CW activo");
+      } else {
+        grblSetMessage("Husillo detenido");
+      }
+    }
     state.statusDirty = true;
     return;
   }
 
   if (strncmp(line, "error:", 6) == 0) {
     cmd.busy = false;
+    cmd.spindlePending = false;
     grblSetError(line);
     return;
   }
 
   if (strncmp(line, "ALARM:", 6) == 0) {
+    cmd.busy = false;
+    cmd.spindlePending = false;
     state.alarm = true;
     strncpy(state.grblState, "Alarm", sizeof(state.grblState) - 1);
     state.grblState[sizeof(state.grblState) - 1] = 0;

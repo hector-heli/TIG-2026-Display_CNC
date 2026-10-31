@@ -45,7 +45,10 @@ enum LinkMode : uint8_t {
 
 #define STATUS_POLL_MS 250
 #define LINK_TIMEOUT_MS 1200
+#define TCP_STALE_MS 3000
+#define TCP_RETRY_COOLDOWN_MS 30000UL
 #define CMD_TIMEOUT_MS 2000
+#define JOB_ACK_TIMEOUT_MS 5000
 
 // ---------------------------------------------------------------------------
 // Display
@@ -53,6 +56,8 @@ enum LinkMode : uint8_t {
 
 #define DISPLAY_ROTATION 1
 #define CALIBRATION_FILE "/TouchCalData2"
+#define BACKLIGHT_TIMEOUT_MS 180000UL
+#define RGB_LED_ACTIVE_LOW 1
 
 #define SCREEN_W 480
 #define SCREEN_H 320
@@ -67,6 +72,23 @@ enum LinkMode : uint8_t {
 #define DEFAULT_TARGET_RPM 500
 
 // ---------------------------------------------------------------------------
+// Caja / desbaste
+// ---------------------------------------------------------------------------
+
+#define BOX_DEFAULT_LENGTH 40.0f
+#define BOX_DEFAULT_WIDTH 30.0f
+#define BOX_DEFAULT_HEIGHT 10.0f
+#define BOX_DEFAULT_TOOL_DIA 6.0f
+#define BOX_DEFAULT_STEPOVER_PCT 40.0f
+#define BOX_DEFAULT_FEED 400.0f
+#define BOX_DEFAULT_RPM 900
+#define BOX_DEFAULT_SAFE_Z 10.0f
+#define BOX_DEFAULT_DEPTH_STEP 1.0f
+#define BOX_DEFAULT_PLUNGE_FEED 200.0f
+#define BOX_MAX_LINES 20000
+#define BOX_FILE_PATH "/box.nc"
+
+// ---------------------------------------------------------------------------
 // UI / Splash
 // ---------------------------------------------------------------------------
 
@@ -79,7 +101,29 @@ enum LinkMode : uint8_t {
 enum Page : uint8_t {
   PAGE_MAIN = 0,
   PAGE_SPINDLE,
+  PAGE_BOX,
   PAGE_SETTINGS
+};
+
+enum JobState : uint8_t {
+  JOB_IDLE = 0,
+  JOB_RUNNING,
+  JOB_PAUSED,
+  JOB_ERROR
+};
+
+enum BoxField : uint8_t {
+  BOX_FIELD_NONE = 0,
+  BOX_FIELD_LENGTH,
+  BOX_FIELD_WIDTH,
+  BOX_FIELD_HEIGHT,
+  BOX_FIELD_TOOL,
+  BOX_FIELD_STEPOVER,
+  BOX_FIELD_FEED,
+  BOX_FIELD_RPM,
+  BOX_FIELD_SAFE_Z,
+  BOX_FIELD_DEPTH_STEP,
+  BOX_FIELD_PLUNGE
 };
 
 enum SpindleDir : uint8_t {
@@ -95,7 +139,10 @@ enum ConfirmAction : uint8_t {
   CONFIRM_SPINDLE_CW,
   CONFIRM_SPINDLE_CCW,
   CONFIRM_ALARM_RESET,
-  CONFIRM_TOUCH_CAL
+  CONFIRM_TOUCH_CAL,
+  CONFIRM_START_JOB,
+  CONFIRM_STOP_JOB,
+  CONFIRM_ABORT_RESET
 };
 
 struct PendantState {
@@ -151,13 +198,33 @@ struct PendantState {
   bool wifiConnected;
   bool tcpConnected;
   unsigned long lastWifiReconnectMs;
+
+  // Caja / desbaste
+  float boxLength;
+  float boxWidth;
+  float boxHeight;
+  float boxToolDia;
+  float boxStepoverPct;
+  float boxFeed;
+  int boxRpm;
+  float boxSafeZ;
+  float boxDepthStep;
+  float boxPlungeFeed;
+
+  JobState jobState;
+  uint16_t jobTotalLines;
+  uint16_t jobLine;
+  bool jobDirty;
+  bool jobAbortPrompt;
 };
 
 struct CommandState {
-  char text[48];
+  char text[96];
   bool busy;
   bool motion;
   unsigned long sentMs;
+  bool spindlePending;
+  SpindleDir pendingSpindleDir;
 };
 
 extern PendantState state;

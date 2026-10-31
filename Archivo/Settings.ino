@@ -6,6 +6,17 @@ void settingsLoad() {
   state.maxRpm = prefs.getInt("maxrpm", DEFAULT_MAX_RPM);
   state.targetRpm = prefs.getInt("rpm", DEFAULT_TARGET_RPM);
 
+  state.boxLength = prefs.getFloat("boxL", BOX_DEFAULT_LENGTH);
+  state.boxWidth = prefs.getFloat("boxW", BOX_DEFAULT_WIDTH);
+  state.boxHeight = prefs.getFloat("boxH", BOX_DEFAULT_HEIGHT);
+  state.boxToolDia = prefs.getFloat("boxD", BOX_DEFAULT_TOOL_DIA);
+  state.boxStepoverPct = prefs.getFloat("boxStep", BOX_DEFAULT_STEPOVER_PCT);
+  state.boxFeed = prefs.getFloat("boxFeed", BOX_DEFAULT_FEED);
+  state.boxRpm = prefs.getInt("boxRpm", BOX_DEFAULT_RPM);
+  state.boxSafeZ = prefs.getFloat("boxSafeZ", BOX_DEFAULT_SAFE_Z);
+  state.boxDepthStep = prefs.getFloat("boxDepth", BOX_DEFAULT_DEPTH_STEP);
+  state.boxPlungeFeed = prefs.getFloat("boxPlunge", BOX_DEFAULT_PLUNGE_FEED);
+
   // Link configuration
   state.linkMode = (LinkMode)prefs.getUChar("linkmode", LINK_MODE_DEFAULT);
   String ssid = prefs.getString("wifissid", WIFI_DEFAULT_SSID);
@@ -63,6 +74,35 @@ void settingsLoad() {
   if (state.targetRpm < 0) state.targetRpm = 0;
   if (state.targetRpm > state.maxRpm) state.targetRpm = state.maxRpm;
 
+  if (state.boxLength < 5.0f) state.boxLength = BOX_DEFAULT_LENGTH;
+  if (state.boxLength > 300.0f) state.boxLength = 300.0f;
+  if (state.boxWidth < 5.0f) state.boxWidth = BOX_DEFAULT_WIDTH;
+  if (state.boxWidth > 300.0f) state.boxWidth = 300.0f;
+  if (state.boxHeight < 1.0f) state.boxHeight = BOX_DEFAULT_HEIGHT;
+  if (state.boxHeight > 100.0f) state.boxHeight = 100.0f;
+  if (state.boxToolDia < 0.5f) state.boxToolDia = BOX_DEFAULT_TOOL_DIA;
+  if (state.boxToolDia > 20.0f) state.boxToolDia = 20.0f;
+  float minBoxDim = state.boxLength < state.boxWidth ? state.boxLength : state.boxWidth;
+  if (state.boxToolDia >= minBoxDim) state.boxToolDia = minBoxDim * 0.5f;
+  if (state.boxStepoverPct < 5.0f) state.boxStepoverPct = BOX_DEFAULT_STEPOVER_PCT;
+  if (state.boxStepoverPct > 80.0f) state.boxStepoverPct = 80.0f;
+  if (state.boxFeed < 50.0f) state.boxFeed = BOX_DEFAULT_FEED;
+  if (state.boxFeed > 3000.0f) state.boxFeed = 3000.0f;
+  if (state.boxRpm < 100) state.boxRpm = BOX_DEFAULT_RPM;
+  if (state.boxRpm > state.maxRpm) state.boxRpm = state.maxRpm;
+  if (state.boxSafeZ < 1.0f) state.boxSafeZ = BOX_DEFAULT_SAFE_Z;
+  if (state.boxSafeZ > 50.0f) state.boxSafeZ = 50.0f;
+  if (state.boxDepthStep < 0.1f) state.boxDepthStep = BOX_DEFAULT_DEPTH_STEP;
+  if (state.boxDepthStep > 10.0f) state.boxDepthStep = 10.0f;
+  if (state.boxDepthStep > state.boxHeight) state.boxDepthStep = state.boxHeight;
+  if (state.boxPlungeFeed < 10.0f) state.boxPlungeFeed = BOX_DEFAULT_PLUNGE_FEED;
+  if (state.boxPlungeFeed > 1000.0f) state.boxPlungeFeed = 1000.0f;
+
+  state.jobState = JOB_IDLE;
+  state.jobTotalLines = 0;
+  state.jobLine = 0;
+  state.jobDirty = true;
+
   state.page = PAGE_MAIN;
   state.spindleDir = SPINDLE_STOP;
   state.feedOv = 100;
@@ -91,6 +131,16 @@ void settingsSave() {
   prefs.putFloat("feed", state.jogFeed);
   prefs.putInt("maxrpm", state.maxRpm);
   prefs.putInt("rpm", state.targetRpm);
+  prefs.putFloat("boxL", state.boxLength);
+  prefs.putFloat("boxW", state.boxWidth);
+  prefs.putFloat("boxH", state.boxHeight);
+  prefs.putFloat("boxD", state.boxToolDia);
+  prefs.putFloat("boxStep", state.boxStepoverPct);
+  prefs.putFloat("boxFeed", state.boxFeed);
+  prefs.putInt("boxRpm", state.boxRpm);
+  prefs.putFloat("boxSafeZ", state.boxSafeZ);
+  prefs.putFloat("boxDepth", state.boxDepthStep);
+  prefs.putFloat("boxPlunge", state.boxPlungeFeed);
   prefs.end();
 }
 

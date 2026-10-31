@@ -6,8 +6,13 @@ static WiFiClient tcpClient;
 static unsigned long lastWifiAttemptMs = 0;
 static unsigned long lastTcpAttemptMs = 0;
 static unsigned long lastLinkLogMs = 0;
+static unsigned long tcpConnectedMs = 0;
+static unsigned long nextTcpAttemptMs = 0;
+static unsigned long lastSeenStatusMs = 0;
 static bool wifiAttemptActive = false;
 static bool tcpUseFallbackPort = false;
+static bool tcpHadStatus = false;
+static uint8_t tcpFailCount = 0;
 
 void linkBegin() {
   linkLineLen = 0;
@@ -20,8 +25,13 @@ void linkBegin() {
   lastWifiAttemptMs = millis() - WIFI_RECONNECT_MS;
   lastTcpAttemptMs = millis() - WIFI_RECONNECT_MS;
   lastLinkLogMs = 0;
+  tcpConnectedMs = 0;
+  nextTcpAttemptMs = 0;
+  lastSeenStatusMs = 0;
   wifiAttemptActive = false;
   tcpUseFallbackPort = false;
+  tcpHadStatus = false;
+  tcpFailCount = 0;
 
   if (tcpClient.connected()) {
     tcpClient.stop();
@@ -41,6 +51,15 @@ void linkBegin() {
 }
 
 void linkPoll() {
+  if (state.lastStatusMs != lastSeenStatusMs) {
+    lastSeenStatusMs = state.lastStatusMs;
+    if (state.lastStatusMs != 0) {
+      tcpHadStatus = true;
+      tcpFailCount = 0;
+      nextTcpAttemptMs = 0;
+    }
+  }
+
   if (state.linkMode == LINK_UART) {
     while (LinkSerial.available()) {
       int c = LinkSerial.read();
@@ -115,8 +134,21 @@ void linkPoll() {
         if (state.tcpConnected) {
           state.tcpConnected = false;
           state.statusDirty = true;
+          if (state.lastStatusMs) {
+            Serial.printf("TCP disconnected statusAge=%lu\n", now - state.lastStatusMs);
+          } else {
+            Serial.printf("TCP disconnected no-status uptime=%lu\n", now);
+          }
+          if (!tcpHadStatus) {
+            tcpFailCount++;
+            if (tcpFailCount >= 3) {
+              tcpFailCount = 0;
+              nextTcpAttemptMs = now + TCP_RETRY_COOLDOWN_MS;
+              Serial.printf("TCP cooldown %lu ms\n", (unsigned long)TCP_RETRY_COOLDOWN_MS);
+            }
+          }
         }
-        if (now - lastTcpAttemptMs >= WIFI_RECONNECT_MS) {
+        if (now - lastTcpAttemptMs >= WIFI_RECONNECT_MS && now >= nextTcpAttemptMs) {
           lastTcpAttemptMs = now;
           if (state.dlcIp[0] != 0 && state.dlcPort > 0) {
             uint16_t portToTry = state.dlcPort;
@@ -141,8 +173,16 @@ void linkPoll() {
               state.tcpConnected = true;
               state.statusDirty = true;
               linkLineLen = 0;
+              tcpConnectedMs = millis();
+              tcpHadStatus = false;
             } else {
               tcpUseFallbackPort = !tcpUseFallbackPort;
+              tcpFailCount++;
+              if (tcpFailCount >= 3) {
+                tcpFailCount = 0;
+                nextTcpAttemptMs = now + TCP_RETRY_COOLDOWN_MS;
+                Serial.printf("TCP cooldown %lu ms\n", (unsigned long)TCP_RETRY_COOLDOWN_MS);
+              }
             }
           }
         }
@@ -151,26 +191,51 @@ void linkPoll() {
           state.tcpConnected = true;
           state.statusDirty = true;
           linkLineLen = 0;
+          tcpConnectedMs = now;
+          tcpHadStatus = false;
         }
-        while (tcpClient.available()) {
-          int c = tcpClient.read();
-          if (c < 0) break;
-          state.lastRxMs = millis();
-          if (c == '\r') {
-            continue;
+        if (now - tcpConnectedMs >= TCP_STALE_MS &&
+            (state.lastStatusMs == 0 || now - state.lastStatusMs >= TCP_STALE_MS)) {
+          if (state.lastStatusMs) {
+            Serial.printf("TCP stale statusAge=%lu\n", now - state.lastStatusMs);
+          } else {
+            Serial.printf("TCP stale no-status uptime=%lu\n", now);
           }
-          if (c == '\n') {
-            if (linkLineLen > 0) {
-              linkLine[linkLineLen] = 0;
-              grblParseLine(linkLine);
+          tcpClient.stop();
+          state.tcpConnected = false;
+          state.statusDirty = true;
+          tcpConnectedMs = 0;
+          lastTcpAttemptMs = now;
+          if (!tcpHadStatus) {
+            tcpFailCount++;
+            if (tcpFailCount >= 3) {
+              tcpFailCount = 0;
+              nextTcpAttemptMs = now + TCP_RETRY_COOLDOWN_MS;
+              Serial.printf("TCP cooldown %lu ms\n", (unsigned long)TCP_RETRY_COOLDOWN_MS);
+            }
+          }
+        }
+        if (state.tcpConnected) {
+          while (tcpClient.available()) {
+            int c = tcpClient.read();
+            if (c < 0) break;
+            state.lastRxMs = millis();
+            if (c == '\r') {
+              continue;
+            }
+            if (c == '\n') {
+              if (linkLineLen > 0) {
+                linkLine[linkLineLen] = 0;
+                grblParseLine(linkLine);
+                linkLineLen = 0;
+              }
+              continue;
+            }
+            if (linkLineLen < sizeof(linkLine) - 1) {
+              linkLine[linkLineLen++] = (char)c;
+            } else {
               linkLineLen = 0;
             }
-            continue;
-          }
-          if (linkLineLen < sizeof(linkLine) - 1) {
-            linkLine[linkLineLen++] = (char)c;
-          } else {
-            linkLineLen = 0;
           }
         }
       }
@@ -190,6 +255,16 @@ void linkPoll() {
   if (nowOk != state.linkOk) {
     state.linkOk = nowOk;
     state.statusDirty = true;
+    if (state.lastStatusMs) {
+      Serial.printf("Link %s wifi=%d tcp=%u statusAge=%lu\n",
+                    nowOk ? "up" : "down", (int)WiFi.status(),
+                    (unsigned)state.tcpConnected,
+                    millis() - state.lastStatusMs);
+    } else {
+      Serial.printf("Link %s wifi=%d tcp=%u no-status\n",
+                    nowOk ? "up" : "down", (int)WiFi.status(),
+                    (unsigned)state.tcpConnected);
+    }
   }
 }
 
